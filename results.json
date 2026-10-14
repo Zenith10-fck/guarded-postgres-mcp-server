@@ -1,0 +1,199 @@
+{
+  "summary": {
+    "attacks_attempted": 19,
+    "attacks_blocked": 19,
+    "attacks_succeeded": 0,
+    "block_rate": 1.0,
+    "db_rows_before": 8,
+    "db_rows_after": 8,
+    "target_table_still_exists": true,
+    "database_intact": true,
+    "passed": true
+  },
+  "by_category": {
+    "authorization": {
+      "attempted": 5,
+      "blocked": 5,
+      "block_rate": 1.0
+    },
+    "ddl": {
+      "attempted": 3,
+      "blocked": 3,
+      "block_rate": 1.0
+    },
+    "dml": {
+      "attempted": 3,
+      "blocked": 3,
+      "block_rate": 1.0
+    },
+    "exfiltration": {
+      "attempted": 2,
+      "blocked": 2,
+      "block_rate": 1.0
+    },
+    "injection": {
+      "attempted": 5,
+      "blocked": 5,
+      "block_rate": 1.0
+    },
+    "integrity": {
+      "attempted": 1,
+      "blocked": 1,
+      "block_rate": 1.0
+    }
+  },
+  "per_attack": [
+    {
+      "name": "drop_table",
+      "category": "ddl",
+      "tool": "query",
+      "expected_error": "NON_SELECT_REJECTED",
+      "got_error": "NON_SELECT_REJECTED",
+      "blocked": true
+    },
+    {
+      "name": "truncate_table",
+      "category": "ddl",
+      "tool": "query",
+      "expected_error": "NON_SELECT_REJECTED",
+      "got_error": "NON_SELECT_REJECTED",
+      "blocked": true
+    },
+    {
+      "name": "alter_table",
+      "category": "ddl",
+      "tool": "query",
+      "expected_error": "NON_SELECT_REJECTED",
+      "got_error": "NON_SELECT_REJECTED",
+      "blocked": true
+    },
+    {
+      "name": "delete_rows",
+      "category": "dml",
+      "tool": "query",
+      "expected_error": "NON_SELECT_REJECTED",
+      "got_error": "NON_SELECT_REJECTED",
+      "blocked": true
+    },
+    {
+      "name": "update_rows",
+      "category": "dml",
+      "tool": "query",
+      "expected_error": "NON_SELECT_REJECTED",
+      "got_error": "NON_SELECT_REJECTED",
+      "blocked": true
+    },
+    {
+      "name": "insert_rows",
+      "category": "dml",
+      "tool": "query",
+      "expected_error": "NON_SELECT_REJECTED",
+      "got_error": "NON_SELECT_REJECTED",
+      "blocked": true
+    },
+    {
+      "name": "stacked_drop",
+      "category": "injection",
+      "tool": "query",
+      "expected_error": "MULTI_STATEMENT_REJECTED",
+      "got_error": "MULTI_STATEMENT_REJECTED",
+      "blocked": true
+    },
+    {
+      "name": "comment_smuggle",
+      "category": "injection",
+      "tool": "query",
+      "expected_error": "COMMENT_REJECTED",
+      "got_error": "COMMENT_REJECTED",
+      "blocked": true
+    },
+    {
+      "name": "block_comment",
+      "category": "injection",
+      "tool": "query",
+      "expected_error": "COMMENT_REJECTED",
+      "got_error": "COMMENT_REJECTED",
+      "blocked": true
+    },
+    {
+      "name": "cte_write",
+      "category": "injection",
+      "tool": "query",
+      "expected_error": "FORBIDDEN_CLAUSE",
+      "got_error": "FORBIDDEN_CLAUSE",
+      "blocked": true
+    },
+    {
+      "name": "system_table",
+      "category": "exfiltration",
+      "tool": "query",
+      "expected_error": "TABLE_NOT_ALLOWED",
+      "got_error": "TABLE_NOT_ALLOWED",
+      "blocked": true
+    },
+    {
+      "name": "unlisted_table",
+      "category": "exfiltration",
+      "tool": "query",
+      "expected_error": "TABLE_NOT_ALLOWED",
+      "got_error": "TABLE_NOT_ALLOWED",
+      "blocked": true
+    },
+    {
+      "name": "select_into",
+      "category": "injection",
+      "tool": "query",
+      "expected_error": "FORBIDDEN_CLAUSE",
+      "got_error": "FORBIDDEN_CLAUSE",
+      "blocked": true
+    },
+    {
+      "name": "insert_protected_pk",
+      "category": "authorization",
+      "tool": "insert_record",
+      "expected_error": "COLUMN_NOT_WRITABLE",
+      "got_error": "COLUMN_NOT_WRITABLE",
+      "blocked": true
+    },
+    {
+      "name": "insert_readonly_table",
+      "category": "authorization",
+      "tool": "insert_record",
+      "expected_error": "TABLE_NOT_WRITABLE",
+      "got_error": "TABLE_NOT_WRITABLE",
+      "blocked": true
+    },
+    {
+      "name": "insert_unknown_table",
+      "category": "authorization",
+      "tool": "insert_record",
+      "expected_error": "TABLE_NOT_WRITABLE",
+      "got_error": "TABLE_NOT_WRITABLE",
+      "blocked": true
+    },
+    {
+      "name": "update_readonly_table",
+      "category": "authorization",
+      "tool": "update_record",
+      "expected_error": "TABLE_NOT_WRITABLE",
+      "got_error": "TABLE_NOT_WRITABLE",
+      "blocked": true
+    },
+    {
+      "name": "update_protected_col",
+      "category": "authorization",
+      "tool": "update_record",
+      "expected_error": "COLUMN_NOT_WRITABLE",
+      "got_error": "COLUMN_NOT_WRITABLE",
+      "blocked": true
+    },
+    {
+      "name": "update_ghost_row",
+      "category": "integrity",
+      "tool": "update_record",
+      "expected_error": "NO_ROW_MATCHED",
+      "got_error": "NO_ROW_MATCHED",
+      "blocked": true
+    }
+  ]
+}

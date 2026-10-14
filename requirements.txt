@@ -1,0 +1,23 @@
+# Official Anthropic MCP SDK — includes the FastMCP server class + a CLI
+# for running/inspecting a server during development.
+mcp[cli]>=1.2.0
+
+# Postgres driver (async) and a thin SQL toolkit used for building queries safely.
+asyncpg>=0.29.0
+sqlalchemy>=2.0.0
+
+# Input/output validation for every tool (fase 1+).
+pydantic>=2.6.0
+
+# SQL parser used to enforce "single SELECT only" in the SQL guard (fase 1).
+sqlglot>=25.0.0
+
+# policy.yaml loading.
+pyyaml>=6.0
+
+# structured logging for the audit log (fase 2).
+structlog>=24.0.0
+
+# test suite (fase 4).
+pytest>=8.0.0
+pytest-asyncio>=0.23.0

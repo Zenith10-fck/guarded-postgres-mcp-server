@@ -1,0 +1,43 @@
+# Guarded Postgres MCP -- example policy.
+#
+# This is the single source of truth for what Claude is allowed to see and
+# do in the database. Every guardrail in this codebase reads from this file
+# instead of being hard-coded -- to point the server at a different client's
+# database, you edit this file, not the Python code.
+#
+# Copy this to policy.yaml and edit per deployment:
+#   cp policy.example.yaml policy.yaml
+
+tables:
+  leads:
+    read: true
+    write: true           # guarded writes (fase 3): insert_record/update_record
+    columns: [id, full_name, email, phone, source, status, created_at]
+    pii_columns: [email, phone]   # masked in results from fase 2 onward
+    row_limit: 200
+    primary_key: id
+    # Only these columns may be written by insert_record/update_record.
+    # `id` and `created_at` are intentionally excluded -- the database
+    # fills them in, Claude must never set them.
+    writable_columns: [full_name, email, phone, source, status]
+
+  orders:
+    read: true
+    write: false
+    columns: [id, lead_id, amount_cents, status, created_at]
+    pii_columns: []
+    row_limit: 200
+
+  invoices:
+    read: true
+    write: false
+    columns: [id, order_id, due_date, paid, notes]
+    pii_columns: []
+    row_limit: 200
+
+# Applied to any table above that doesn't set its own row_limit.
+default_row_limit: 100
+
+# Hard ceiling on how long a single query() call may run before it's killed
+# and returned to Claude as a structured QUERY_TIMEOUT error.
+query_timeout_seconds: 5

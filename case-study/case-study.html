@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Guarded Postgres MCP Server — Case Study</title>
+<style>
+  :root {
+    --bg: #f7f7f5;
+    --surface: #ffffff;
+    --ink: #1f1d1a;
+    --muted: #6b6660;
+    --line: #e5e2dc;
+    --accent: #b5451f;
+    --accent-soft: #f4e5de;
+    --good: #1f7a4d;
+    --good-soft: #e4f2ea;
+    --code-bg: #f2efe9;
+    --shadow: 0 1px 3px rgba(0,0,0,.06), 0 8px 24px rgba(0,0,0,.04);
+    --maxw: 820px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #17150f;
+      --surface: #201d16;
+      --ink: #ece7dd;
+      --muted: #a49d90;
+      --line: #34302650;
+      --line: #35312a;
+      --accent: #e0763f;
+      --accent-soft: #3a271d;
+      --good: #5fca92;
+      --good-soft: #1e3227;
+      --code-bg: #2a261e;
+      --shadow: 0 1px 3px rgba(0,0,0,.4), 0 8px 24px rgba(0,0,0,.3);
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #17150f;
+    --surface: #201d16;
+    --ink: #ece7dd;
+    --muted: #a49d90;
+    --line: #35312a;
+    --accent: #e0763f;
+    --accent-soft: #3a271d;
+    --good: #5fca92;
+    --good-soft: #1e3227;
+    --code-bg: #2a261e;
+    --shadow: 0 1px 3px rgba(0,0,0,.4), 0 8px 24px rgba(0,0,0,.3);
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font: 16px/1.65 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: var(--maxw); margin: 0 auto; padding: 48px 24px 80px; }
+  header.hero { padding-bottom: 8px; }
+  .kicker {
+    display: inline-block; font-size: 12px; letter-spacing: .08em; text-transform: uppercase;
+    color: var(--accent); font-weight: 700; margin-bottom: 14px;
+    background: var(--accent-soft); padding: 5px 11px; border-radius: 999px;
+  }
+  h1 { font-size: clamp(28px, 5vw, 40px); line-height: 1.15; margin: 0 0 18px; letter-spacing: -.02em; }
+  h2 { font-size: 22px; margin: 44px 0 14px; letter-spacing: -.01em; }
+  h3 { font-size: 16px; margin: 26px 0 8px; }
+  p { margin: 0 0 16px; }
+  .lede { font-size: 18px; color: var(--muted); }
+  .meta { display: flex; flex-wrap: wrap; gap: 8px 20px; margin: 22px 0 8px; font-size: 14px; color: var(--muted); }
+  .meta b { color: var(--ink); font-weight: 600; }
+  hr { border: none; border-top: 1px solid var(--line); margin: 40px 0; }
+  ul { margin: 0 0 16px; padding-left: 22px; }
+  li { margin: 6px 0; }
+  code { background: var(--code-bg); padding: 1px 6px; border-radius: 5px; font-size: .88em;
+    font-family: "SF Mono", ui-monospace, Menlo, Consolas, monospace; }
+  .card { background: var(--surface); border: 1px solid var(--line); border-radius: 14px;
+    padding: 22px 24px; box-shadow: var(--shadow); margin: 20px 0; }
+  .diagram { font-family: "SF Mono", ui-monospace, Menlo, Consolas, monospace; font-size: 12.5px;
+    line-height: 1.5; white-space: pre; overflow-x: auto; color: var(--ink);
+    background: var(--code-bg); border-radius: 12px; padding: 20px; border: 1px solid var(--line); }
+  table { width: 100%; border-collapse: collapse; margin: 8px 0 20px; font-size: 14.5px; }
+  th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { font-size: 12px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); font-weight: 700; }
+  td.num { font-variant-numeric: tabular-nums; font-weight: 700; }
+  .zero { color: var(--good); font-weight: 800; }
+  .tablewrap { overflow-x: auto; }
+  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 14px; margin: 24px 0; }
+  .stat { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 18px 20px; box-shadow: var(--shadow); }
+  .stat .big { font-size: 30px; font-weight: 800; letter-spacing: -.02em; color: var(--accent); font-variant-numeric: tabular-nums; }
+  .stat .big.good { color: var(--good); }
+  .stat .lbl { font-size: 13px; color: var(--muted); margin-top: 2px; }
+  .badge { display: inline-block; background: var(--good-soft); color: var(--good); font-weight: 700;
+    font-size: 13px; padding: 4px 12px; border-radius: 999px; }
+  .note { font-size: 14px; color: var(--muted); border-left: 3px solid var(--line); padding: 4px 0 4px 16px; }
+  footer { margin-top: 48px; font-size: 13px; color: var(--muted); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="hero">
+    <span class="kicker">AI Automation · Claude · Reliability</span>
+    <h1>Let Claude query your database — without fear of <code>DROP TABLE</code></h1>
+    <p class="lede">A Model Context Protocol server that gives Claude governed access to
+      Postgres: read-mostly, PII-masked, fully audited, and structurally unable to
+      destroy your data — even if the code had a bug.</p>
+    <div class="meta">
+      <span><b>Role:</b> AI Automation Engineer &amp; Claude Expert</span>
+      <span><b>Stack:</b> Python · MCP · Postgres · asyncpg · sqlglot · Pydantic</span>
+    </div>
+    <div class="meta"><span><b>Type:</b> Reference build / portfolio demonstration (not a paid engagement)</span></div>
+  </header>
+
+  <hr>
+
+  <h2>The problem</h2>
+  <p>Connecting Claude to a company's live Postgres database is one of the most-requested
+    AI automation jobs — and one of the most dangerous. The moment Claude can
+    <em>execute</em> SQL, three things can go wrong, all quietly:</p>
+  <ul>
+    <li><b>Destruction.</b> A confused model, or a pasted "helpful" query, runs
+      <code>DROP TABLE</code>, <code>DELETE</code>, or a stacked-statement injection — data gone.</li>
+    <li><b>Leakage.</b> Claude returns a full column of emails or phone numbers because
+      nobody told it those were off-limits.</li>
+    <li><b>Silent wrong answers.</b> A query returns a truncated or wrong-shaped result,
+      Claude reports it as fact, and a decision gets made on bad numbers.</li>
+  </ul>
+  <p>Most "connect Claude to your DB" demos ignore all three because they demo on the
+    happy path. This build is designed against the failure path.</p>
+
+  <h2>What I built</h2>
+  <p>An <b>MCP server</b> that gives Claude governed Postgres access. Every call passes
+    through an explicit chain of guards before it ever reaches the database.</p>
+  <div class="diagram">Claude Desktop / API  ──MCP (stdio)──▶  Guarded MCP Server (Python)  ──▶  Postgres
+                                        │                                  ▲
+        Auth → Rate-limit → Schema-validate → SQL-guard →                  │
+        PII-redact → Audit-log                                    least-privilege role
+                                        │
+                                    policy.yaml  (single source of truth:
+                                    which tables/columns, read vs write,
+                                    row limits, which columns are PII)</div>
+  <p class="note">Key decision: every guardrail is driven by one <code>policy.yaml</code>
+    file, not hard-coded. To point this at a different client's database, you edit that
+    file — not the code. That's what makes it a reusable product, not a one-off script.</p>
+
+  <h2>The tools Claude sees</h2>
+  <div class="tablewrap">
+  <table>
+    <thead><tr><th>Tool</th><th>What it does</th><th>Guardrail</th></tr></thead>
+    <tbody>
+      <tr><td><code>list_tables</code></td><td>Lists allow-listed tables</td><td>Only tables in policy</td></tr>
+      <tr><td><code>describe_table</code></td><td>Schema + 3-row sample</td><td>Allow-list; PII masked</td></tr>
+      <tr><td><code>query</code></td><td>Runs a SELECT</td><td>Single read-only SELECT, no comments, no DDL/DML (even in CTEs), allow-listed tables, forced LIMIT, timeout, PII masked</td></tr>
+      <tr><td><code>insert_record</code></td><td>Adds a row</td><td>Writable tables/columns only, Pydantic-validated, dry-run by default, transactional</td></tr>
+      <tr><td><code>update_record</code></td><td>Changes one row</td><td>Same + must target exactly one row by primary key</td></tr>
+      <tr><td><code>get_audit_log</code></td><td>Shows recent activity</td><td>So the client can verify safety themselves</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <h2>The reliability layer — defense in depth</h2>
+  <p>Safety here isn't one wall; it's independent layers that would each have to fail:</p>
+  <ul>
+    <li><b>Application SQL guard.</b> <code>query</code> is parsed into a syntax tree
+      with <code>sqlglot</code> and rejected unless it's exactly one read-only
+      <code>SELECT</code> — catching a <code>DELETE</code> smuggled inside a CTE.</li>
+    <li><b>Least-privilege DB roles.</b> Never a superuser. Reads use a
+      <code>SELECT</code>-only role; writes use a separate role that can't
+      <code>DELETE</code>/<code>DROP</code>/<code>ALTER</code> anything. A Python-guard
+      bug still can't destroy data — the database itself refuses.</li>
+    <li><b>Policy-driven PII redaction</b> on every result.</li>
+    <li><b>Dry-run writes</b> — nothing changes until an explicit <code>confirm=true</code>.</li>
+    <li><b>Structured errors</b> — <code>{error_code, message, hint}</code>, never a
+      stack trace or a silent empty result.</li>
+    <li><b>Full audit log</b> — every call recorded to an append-only trail.</li>
+  </ul>
+
+  <h2>Results — measured against an adversarial suite</h2>
+  <div class="stats">
+    <div class="stat"><div class="big">19</div><div class="lbl">adversarial attacks attempted</div></div>
+    <div class="stat"><div class="big good">0</div><div class="lbl">attacks succeeded</div></div>
+    <div class="stat"><div class="big good">100%</div><div class="lbl">block rate</div></div>
+    <div class="stat"><div class="big good">7 → 7</div><div class="lbl">rows unchanged after all attacks</div></div>
+  </div>
+  <p>I wrote 19 attacks — the things a careless or malicious caller actually tries — and
+    ran every one. Each must be refused with the correct structured error, and the
+    database must be provably unchanged. Reproducible with one command
+    (<code>python scripts/run_adversarial.py</code>); no API tokens required.</p>
+  <div class="tablewrap">
+  <table>
+    <thead><tr><th>Attack category</th><th>Examples</th><th>Attempts</th><th>Got through</th></tr></thead>
+    <tbody>
+      <tr><td>DDL (destroy schema)</td><td><code>DROP</code>, <code>TRUNCATE</code>, <code>ALTER</code></td><td class="num">3</td><td class="num zero">0</td></tr>
+      <tr><td>DML via read tool</td><td><code>DELETE</code>/<code>UPDATE</code>/<code>INSERT</code> through <code>query</code></td><td class="num">3</td><td class="num zero">0</td></tr>
+      <tr><td>Injection</td><td>stacked statements, comment smuggling, CTE writes, <code>SELECT INTO</code></td><td class="num">5</td><td class="num zero">0</td></tr>
+      <tr><td>Exfiltration</td><td>reading <code>pg_catalog</code>, <code>information_schema</code></td><td class="num">2</td><td class="num zero">0</td></tr>
+      <tr><td>Write authorization</td><td>protected columns / read-only tables</td><td class="num">5</td><td class="num zero">0</td></tr>
+      <tr><td>Integrity</td><td>updating a non-existent row</td><td class="num">1</td><td class="num zero">0</td></tr>
+      <tr><td><b>Total</b></td><td></td><td class="num"><b>19</b></td><td class="num zero"><b>0</b></td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p><span class="badge">✓ Database intact after all 19 attacks</span></p>
+
+  <h2>Point it at your database — about 15 minutes</h2>
+  <ul>
+    <li><code>docker compose up -d</code> starts a demo Postgres, or set <code>DATABASE_URL</code> to your own.</li>
+    <li>Copy <code>policy.example.yaml</code> → <code>policy.yaml</code>; list your tables, columns, writable ones, and PII ones.</li>
+    <li>Create the two least-privilege roles (SQL provided).</li>
+    <li>Register the server in Claude Desktop (one JSON block, provided).</li>
+    <li>Ask a business question — watch Claude query safely, then refuse a <code>DROP TABLE</code> with a clean explained error.</li>
+  </ul>
+
+  <footer>
+    <p><b>Honesty note.</b> Reference/demo build, not a paid client engagement. Metrics
+      come from the self-built 19-attack adversarial suite and are fully reproducible
+      from the repo. No client names, logos, or data are implied.</p>
+  </footer>
+</div>
+</body>
+</html>

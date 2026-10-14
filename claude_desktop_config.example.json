@@ -1,0 +1,18 @@
+{
+  "//": "Add this under mcpServers in Claude Desktop's config file:",
+  "//_macos": "~/Library/Application Support/Claude/claude_desktop_config.json",
+  "//_windows": "%APPDATA%\\Claude\\claude_desktop_config.json",
+  "//_note": "Replace ABSOLUTE_PATH with the full path to this repo. The server talks to Claude over stdio, so there is no URL/port.",
+  "mcpServers": {
+    "guarded-postgres": {
+      "command": "ABSOLUTE_PATH/.venv/Scripts/python.exe",
+      "args": ["-m", "guarded_mcp.server"],
+      "cwd": "ABSOLUTE_PATH",
+      "env": {
+        "POLICY_PATH": "ABSOLUTE_PATH/policy.yaml",
+        "DATABASE_URL": "postgresql://guarded_reader:guarded_reader_password@localhost:55432/guarded_demo",
+        "WRITE_DATABASE_URL": "postgresql://guarded_writer:guarded_writer_password@localhost:55432/guarded_demo"
+      }
+    }
+  }
+}
